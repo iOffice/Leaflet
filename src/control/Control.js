@@ -1,10 +1,18 @@
 /*
+ * @class Control
+ * @aka L.Control
+ *
  * L.Control is a base class for implementing map controls. Handles positioning.
  * All other controls extend from this class.
  */
 
 L.Control = L.Class.extend({
+	// @section
+	// @aka Control options
 	options: {
+		// @option position: String = 'topright'
+		// The position of the control (one of the map corners). Possible values are `'topleft'`,
+		// `'topright'`, `'bottomleft'` or `'bottomright'`
 		position: 'topright'
 	},
 
@@ -12,10 +20,18 @@ L.Control = L.Class.extend({
 		L.setOptions(this, options);
 	},
 
+	/* @section
+	 * Classes extending L.Control will inherit the following methods:
+	 *
+	 * @method getPosition: string
+	 * Returns the position of the control.
+	 */
 	getPosition: function () {
 		return this.options.position;
 	},
 
+	// @method setPosition(position: string): this
+	// Sets the position of the control.
 	setPosition: function (position) {
 		var map = this._map;
 
@@ -32,10 +48,14 @@ L.Control = L.Class.extend({
 		return this;
 	},
 
+	// @method getContainer: HTMLElement
+	// Returns the HTMLElement that contains the control.
 	getContainer: function () {
 		return this._container;
 	},
 
+	// @method addTo(map: Map): this
+	// Adds the control to the given map.
 	addTo: function (map) {
 		this.remove();
 		this._map = map;
@@ -55,6 +75,8 @@ L.Control = L.Class.extend({
 		return this;
 	},
 
+	// @method remove: this
+	// Removes the control from the map it is currently active on.
 	remove: function () {
 		if (!this._map) {
 			return this;
@@ -83,15 +105,31 @@ L.control = function (options) {
 	return new L.Control(options);
 };
 
+/* @section Extension methods
+ * @uninheritable
+ *
+ * Every control should extend from `L.Control` and (re-)implement the following methods.
+ *
+ * @method onAdd(map: Map): HTMLElement
+ * Should return the container DOM element for the control and add listeners on relevant map events. Called on [`control.addTo(map)`](#control-addTo).
+ *
+ * @method onRemove(map: Map)
+ * Optional method. Should contain all clean up code that removes the listeners previously added in [`onAdd`](#control-onadd). Called on [`control.remove()`](#control-remove).
+ */
 
-// adds control-related methods to L.Map
-
+/* @namespace Map
+ * @section Methods for Layers and Controls
+ */
 L.Map.include({
+	// @method addControl(control: Control): this
+	// Adds the given control to the map
 	addControl: function (control) {
 		control.addTo(this);
 		return this;
 	},
 
+	// @method removeControl(control: Control): this
+	// Removes the given control from the map
 	removeControl: function (control) {
 		control.remove();
 		return this;

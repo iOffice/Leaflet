@@ -8,6 +8,7 @@ L.extend(L.DomEvent, {
 	POINTER_MOVE:   L.Browser.msPointer ? 'MSPointerMove'   : 'pointermove',
 	POINTER_UP:     L.Browser.msPointer ? 'MSPointerUp'     : 'pointerup',
 	POINTER_CANCEL: L.Browser.msPointer ? 'MSPointerCancel' : 'pointercancel',
+	TAG_WHITE_LIST: ['INPUT', 'SELECT', 'OPTION'],
 
 	_pointers: {},
 	_pointersCount: 0,
@@ -49,7 +50,16 @@ L.extend(L.DomEvent, {
 
 	_addPointerStart: function (obj, handler, id) {
 		var onDown = L.bind(function (e) {
-			L.DomEvent.preventDefault(e);
+			if (e.pointerType !== 'mouse' && e.pointerType !== e.MSPOINTER_TYPE_MOUSE) {
+				// In IE11, some touch events needs to fire for form controls, or
+				// the controls will stop working. We keep a whitelist of tag names that
+				// need these events. For other target tags, we prevent default on the event.
+				if (this.TAG_WHITE_LIST.indexOf(e.target.tagName) < 0) {
+					L.DomEvent.preventDefault(e);
+				} else {
+					return;
+				}
+			}
 
 			this._handlePointer(e, handler);
 		}, this);

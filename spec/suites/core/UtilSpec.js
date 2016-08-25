@@ -47,10 +47,10 @@ describe('Util', function () {
 
 		it('passes additional arguments to the bound function', function () {
 			var fn = sinon.spy(),
-				foo = {},
-				a = {},
-				b = {},
-				c = {};
+			    foo = {},
+			    a = {},
+			    b = {},
+			    c = {};
 
 			var fn2 = L.Util.bind(fn, foo, a, b);
 
@@ -63,13 +63,13 @@ describe('Util', function () {
 	describe('#stamp', function () {
 		it('sets a unique id on the given object and returns it', function () {
 			var a = {},
-				id = L.Util.stamp(a);
+			    id = L.Util.stamp(a);
 
 			expect(typeof id).to.eql('number');
 			expect(L.Util.stamp(a)).to.eql(id);
 
 			var b = {},
-				id2 = L.Util.stamp(b);
+			    id2 = L.Util.stamp(b);
 
 			expect(id2).not.to.eql(id);
 		});
@@ -120,7 +120,7 @@ describe('Util', function () {
 	describe('#requestAnimFrame', function () {
 		it('calles a function on next frame, unless canceled', function (done) {
 			var spy = sinon.spy(),
-				foo = {};
+			    foo = {};
 
 			L.Util.requestAnimFrame(spy);
 
@@ -179,21 +179,21 @@ describe('Util', function () {
 
 		it('creates a distinct options object', function () {
 			var opts = {},
-				o = L.Util.create({options: opts});
+			    o = L.Util.create({options: opts});
 			L.Util.setOptions(o, {});
 			expect(o.options).not.to.equal(opts);
 		});
 
 		it("doesn't create a distinct options object if object already has own options", function () {
 			var opts = {},
-				o = {options: opts};
+			    o = {options: opts};
 			L.Util.setOptions(o, {});
 			expect(o.options).to.equal(opts);
 		});
 
 		it('inherits options prototypally', function () {
 			var opts = {},
-				o = L.Util.create({options: opts});
+			    o = L.Util.create({options: opts});
 			L.Util.setOptions(o, {});
 			opts.foo = 'bar';
 			expect(o.options.foo).to.eql('bar');
@@ -211,6 +211,7 @@ describe('Util', function () {
 
 			expect(str).to.eql('Hello Vlad and Dave!');
 		});
+
 		it('does not modify text without a token variable', function () {
 			expect(L.Util.template('foo', {})).to.eql('foo');
 		});
@@ -226,11 +227,16 @@ describe('Util', function () {
 				L.Util.template(undefined, {foo: 'bar'});
 			}).to.throwError();
 		});
+
+		it('allows underscores and dashes in placeholders', function () {
+			expect(L.Util.template('{nice_stuff}', {'nice_stuff': 'foo'})).to.eql('foo');
+			expect(L.Util.template('{-y}', {'-y': 1})).to.eql('1');
+		});
 	});
 
 	describe('#isArray', function () {
 		expect(L.Util.isArray([1, 2, 3])).to.be(true);
-		/*eslint no-array-constructor:0*/
+		/* eslint no-array-constructor: 0 */
 		expect(L.Util.isArray(new Array(1, 2, 3))).to.be(true);
 		expect(L.Util.isArray('blabla')).to.be(false);
 		expect(L.Util.isArray({0: 1, 1: 2})).to.be(false);

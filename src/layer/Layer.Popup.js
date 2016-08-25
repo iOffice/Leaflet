@@ -1,9 +1,25 @@
 /*
- * Adds popup-related methods to all layers.
+ * @namespace Layer
+ * @section Popup methods example
+ *
+ * All layers share a set of methods convenient for binding popups to it.
+ *
+ * ```js
+ * var layer = L.Polygon(latlngs).bindPopup('Hi There!').addTo(map);
+ * layer.openPopup();
+ * layer.closePopup();
+ * ```
+ *
+ * Popups will also be automatically opened when the layer is clicked on and closed when the layer is removed from the map or another popup is opened.
  */
 
+// @section Popup methods
 L.Layer.include({
 
+	// @method bindPopup(content: String|HTMLElement|Function|Popup, options?: Popup options): this
+	// Binds a popup to the layer with the passed `content` and sets up the
+	// neccessary event listeners. If a `Function` is passed it will receive
+	// the layer as the first argument and should return a `String` or `HTMLElement`.
 	bindPopup: function (content, options) {
 
 		if (content instanceof L.Popup) {
@@ -26,12 +42,11 @@ L.Layer.include({
 			this._popupHandlersAdded = true;
 		}
 
-		// save the originally passed offset
-		this._originalPopupOffset = this._popup.options.offset;
-
 		return this;
 	},
 
+	// @method unbindPopup(): this
+	// Removes the popup previously bound with `bindPopup`.
 	unbindPopup: function () {
 		if (this._popup) {
 			this.off({
@@ -45,6 +60,8 @@ L.Layer.include({
 		return this;
 	},
 
+	// @method openPopup(latlng?: LatLng): this
+	// Opens the bound popup at the specificed `latlng` or at the default popup anchor if no `latlng` is passed.
 	openPopup: function (layer, latlng) {
 		if (!(layer instanceof L.Layer)) {
 			latlng = layer;
@@ -63,9 +80,6 @@ L.Layer.include({
 		}
 
 		if (this._popup && this._map) {
-			// set the popup offset for this layer
-			this._popup.options.offset = this._popupAnchor(layer);
-
 			// set popup source to this layer
 			this._popup._source = layer;
 
@@ -79,6 +93,8 @@ L.Layer.include({
 		return this;
 	},
 
+	// @method closePopup(): this
+	// Closes the popup bound to this layer if it is open.
 	closePopup: function () {
 		if (this._popup) {
 			this._popup._close();
@@ -86,6 +102,8 @@ L.Layer.include({
 		return this;
 	},
 
+	// @method togglePopup(): this
+	// Opens or closes the popup bound to this layer depending on its current state.
 	togglePopup: function (target) {
 		if (this._popup) {
 			if (this._popup._map) {
@@ -97,6 +115,14 @@ L.Layer.include({
 		return this;
 	},
 
+	// @method isPopupOpen(): boolean
+	// Returns `true` if the popup bound to this layer is currently open.
+	isPopupOpen: function () {
+		return this._popup.isOpen();
+	},
+
+	// @method setPopupContent(content: String|HTMLElement|Popup): this
+	// Sets the content of the popup bound to this layer.
 	setPopupContent: function (content) {
 		if (this._popup) {
 			this._popup.setContent(content);
@@ -104,6 +130,8 @@ L.Layer.include({
 		return this;
 	},
 
+	// @method getPopup(): Popup
+	// Returns the popup bound to this layer.
 	getPopup: function () {
 		return this._popup;
 	},
@@ -119,6 +147,9 @@ L.Layer.include({
 			return;
 		}
 
+		// prevent map click
+		L.DomEvent.stop(e);
+
 		// if this inherits from Path its a vector and we can just
 		// open the popup at the new location
 		if (layer instanceof L.Path) {
@@ -133,17 +164,6 @@ L.Layer.include({
 		} else {
 			this.openPopup(layer, e.latlng);
 		}
-	},
-
-	_popupAnchor: function (layer) {
-		// where shold we anchor the popup on this layer?
-		var anchor = layer._getPopupAnchor ? layer._getPopupAnchor() : [0, 0];
-
-		// add the users passed offset to that
-		var offsetToAdd = this._originalPopupOffset || L.Popup.prototype.options.offset;
-
-		// return the final point to anchor the popup
-		return L.point(anchor).add(offsetToAdd);
 	},
 
 	_movePopup: function (e) {

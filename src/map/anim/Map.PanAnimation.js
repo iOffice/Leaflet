@@ -10,13 +10,13 @@ L.Map.include({
 		center = this._limitCenter(L.latLng(center), zoom, this.options.maxBounds);
 		options = options || {};
 
-		this.stop();
+		this._stop();
 
 		if (this._loaded && !options.reset && options !== true) {
 
 			if (options.animate !== undefined) {
 				options.zoom = L.extend({animate: options.animate}, options.zoom);
-				options.pan = L.extend({animate: options.animate}, options.pan);
+				options.pan = L.extend({animate: options.animate, duration: options.duration}, options.pan);
 			}
 
 			// try animating pan or zoom
@@ -44,7 +44,7 @@ L.Map.include({
 		if (!offset.x && !offset.y) {
 			return this.fire('moveend');
 		}
-		//If we pan too far then chrome gets issues with tiles
+		// If we pan too far, Chrome gets issues with tiles
 		// and makes them disappear or appear in the wrong place (slightly offset) #2602
 		if (options.animate !== true && !this.getSize().contains(offset)) {
 			this._resetView(this.unproject(this.project(this.getCenter()).add(offset)), this.getZoom());
@@ -69,7 +69,7 @@ L.Map.include({
 		if (options.animate !== false) {
 			L.DomUtil.addClass(this._mapPane, 'leaflet-pan-anim');
 
-			var newPos = this._getMapPanePos().subtract(offset);
+			var newPos = this._getMapPanePos().subtract(offset).round();
 			this._panAnim.run(this._mapPane, newPos, options.duration || 0.25, options.easeLinearity);
 		} else {
 			this._rawPanBy(offset);

@@ -1,5 +1,10 @@
-
+// @namespace Map
+// @section Methods for modifying map state
 L.Map.include({
+
+	// @method flyTo(latlng: LatLng, zoom?: Number, options?: Zoom/pan options): this
+	// Sets the view of the map (geographical center and zoom) performing a smooth
+	// pan-zoom animation.
 	flyTo: function (targetCenter, targetZoom, options) {
 
 		options = options || {};
@@ -7,7 +12,7 @@ L.Map.include({
 			return this.setView(targetCenter, targetZoom, options);
 		}
 
-		this.stop();
+		this._stop();
 
 		var from = this.project(this.getCenter()),
 		    to = this.project(targetCenter),
@@ -19,13 +24,23 @@ L.Map.include({
 
 		var w0 = Math.max(size.x, size.y),
 		    w1 = w0 * this.getZoomScale(startZoom, targetZoom),
-		    u1 = to.distanceTo(from),
+		    u1 = (to.distanceTo(from)) || 1,
 		    rho = 1.42,
 		    rho2 = rho * rho;
 
 		function r(i) {
-			var b = (w1 * w1 - w0 * w0 + (i ? -1 : 1) * rho2 * rho2 * u1 * u1) / (2 * (i ? w1 : w0) * rho2 * u1);
-			return Math.log(Math.sqrt(b * b + 1) - b);
+			var s1 = i ? -1 : 1,
+			    s2 = i ? w1 : w0,
+			    t1 = w1 * w1 - w0 * w0 + s1 * rho2 * rho2 * u1 * u1,
+			    b1 = 2 * s2 * rho2 * u1,
+			    b = t1 / b1,
+			    sq = Math.sqrt(b * b + 1) - b;
+
+			    // workaround for floating point precision bug when sq = 0, log = -Infinite,
+			    // thus triggering an infinite loop in flyTo
+			    var log = sq < 0.000000001 ? -18 : Math.log(sq);
+
+			return log;
 		}
 
 		function sinh(n) { return (Math.exp(n) - Math.exp(-n)) / 2; }
@@ -52,7 +67,8 @@ L.Map.include({
 
 				this._move(
 					this.unproject(from.add(to.subtract(from).multiplyBy(u(s) / u1)), startZoom),
-					this.getScaleZoom(w0 / w(s), startZoom));
+					this.getScaleZoom(w0 / w(s), startZoom),
+					{flyTo: true});
 
 			} else {
 				this
@@ -67,7 +83,10 @@ L.Map.include({
 		return this;
 	},
 
-	flyToBounds: function(bounds, options) {
+	// @method flyToBounds(bounds: LatLngBounds, options?: fitBounds options): this
+	// Sets the view of the map with a smooth animation like [`flyTo`](#map-flyto),
+	// but takes a bounds parameter like [`fitBounds`](#map-fitbounds).
+	flyToBounds: function (bounds, options) {
 		var target = this._getBoundsCenterZoom(bounds, options);
 		return this.flyTo(target.center, target.zoom, options);
 	}

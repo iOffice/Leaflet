@@ -1,19 +1,65 @@
 /*
- * L.Control.Layers is a control to allow users to switch between different layers on the map.
+ * @class Control.Layers
+ * @aka L.Control.Layers
+ * @inherits Control
+ *
+ * The layers control gives users the ability to switch between different base layers and switch overlays on/off (check out the [detailed example](http://leafletjs.com/examples/layers-control.html)). Extends `Control`.
+ *
+ * @example
+ *
+ * ```js
+ * var baseLayers = {
+ * 	"Mapbox": mapbox,
+ * 	"OpenStreetMap": osm
+ * };
+ *
+ * var overlays = {
+ * 	"Marker": marker,
+ * 	"Roads": roadsLayer
+ * };
+ *
+ * L.control.layers(baseLayers, overlays).addTo(map);
+ * ```
+ *
+ * The `baseLayers` and `overlays` parameters are object literals with layer names as keys and `Layer` objects as values:
+ *
+ * ```js
+ * {
+ *     "<someName1>": layer1,
+ *     "<someName2>": layer2
+ * }
+ * ```
+ *
+ * The layer names can contain HTML, which allows you to add additional styling to the items:
+ *
+ * ```js
+ * {"<img src='my-layer-icon' /> <span class='my-layer-item'>My Layer</span>": myLayer}
+ * ```
  */
 
+
 L.Control.Layers = L.Control.extend({
+	// @section
+	// @aka Control.Layers options
 	options: {
+		// @option collapsed: Boolean = true
+		// If `true`, the control will be collapsed into an icon and expanded on mouse hover or touch.
 		collapsed: true,
 		position: 'topright',
+
+		// @option autoZIndex: Boolean = true
+		// If `true`, the control will assign zIndexes in increasing order to all of its layers so that the order is preserved when switching them on/off.
 		autoZIndex: true,
+
+		// @option hideSingleBase: Boolean = false
+		// If `true`, the base layers in the control will be hidden when there is only one.
 		hideSingleBase: false
 	},
 
 	initialize: function (baseLayers, overlays, options) {
 		L.setOptions(this, options);
 
-		this._layers = {};
+		this._layers = [];
 		this._lastZIndex = 0;
 		this._handlingClick = false;
 
@@ -26,28 +72,71 @@ L.Control.Layers = L.Control.extend({
 		}
 	},
 
-	onAdd: function () {
+	onAdd: function (map) {
 		this._initLayout();
 		this._update();
+
+		this._map = map;
+		map.on('zoomend', this._checkDisabledLayers, this);
 
 		return this._container;
 	},
 
+	onRemove: function () {
+		this._map.off('zoomend', this._checkDisabledLayers, this);
+
+		for (var i = 0; i < this._layers.length; i++) {
+			this._layers[i].layer.off('add remove', this._onLayerChange, this);
+		}
+	},
+
+	// @method addBaseLayer(layer: Layer, name: String): this
+	// Adds a base layer (radio button entry) with the given name to the control.
 	addBaseLayer: function (layer, name) {
 		this._addLayer(layer, name);
-		return this._update();
+		return (this._map) ? this._update() : this;
 	},
 
+	// @method addOverlay(layer: Layer, name: String): this
+	// Adds an overlay (checkbox entry) with the given name to the control.
 	addOverlay: function (layer, name) {
 		this._addLayer(layer, name, true);
-		return this._update();
+		return (this._map) ? this._update() : this;
 	},
 
+	// @method removeLayer(layer: Layer): this
+	// Remove the given layer from the control.
 	removeLayer: function (layer) {
 		layer.off('add remove', this._onLayerChange, this);
 
-		delete this._layers[L.stamp(layer)];
-		return this._update();
+		var obj = this._getLayer(L.stamp(layer));
+		if (obj) {
+			this._layers.splice(this._layers.indexOf(obj), 1);
+		}
+		return (this._map) ? this._update() : this;
+	},
+
+	// @method expand(): this
+	// Expand the control container if collapsed.
+	expand: function () {
+		L.DomUtil.addClass(this._container, 'leaflet-control-layers-expanded');
+		this._form.style.height = null;
+		var acceptableHeight = this._map.getSize().y - (this._container.offsetTop + 50);
+		if (acceptableHeight < this._form.clientHeight) {
+			L.DomUtil.addClass(this._form, 'leaflet-control-layers-scrollbar');
+			this._form.style.height = acceptableHeight + 'px';
+		} else {
+			L.DomUtil.removeClass(this._form, 'leaflet-control-layers-scrollbar');
+		}
+		this._checkDisabledLayers();
+		return this;
+	},
+
+	// @method collapse(): this
+	// Collapse the control container if expanded.
+	collapse: function () {
+		L.DomUtil.removeClass(this._container, 'leaflet-control-layers-expanded');
+		return this;
 	},
 
 	_initLayout: function () {
@@ -57,12 +146,9 @@ L.Control.Layers = L.Control.extend({
 		// makes this work on IE touch devices by stopping it from firing a mouseout event when the touch is released
 		container.setAttribute('aria-haspopup', true);
 
+		L.DomEvent.disableClickPropagation(container);
 		if (!L.Browser.touch) {
-			L.DomEvent
-				.disableClickPropagation(container)
-				.disableScrollPropagation(container);
-		} else {
-			L.DomEvent.on(container, 'click', L.DomEvent.stopPropagation);
+			L.DomEvent.disableScrollPropagation(container);
 		}
 
 		var form = this._form = L.DomUtil.create('form', className + '-list');
@@ -70,8 +156,8 @@ L.Control.Layers = L.Control.extend({
 		if (this.options.collapsed) {
 			if (!L.Browser.android) {
 				L.DomEvent.on(container, {
-					mouseenter: this._expand,
-					mouseleave: this._collapse
+					mouseenter: this.expand,
+					mouseleave: this.collapse
 				}, this);
 			}
 
@@ -82,9 +168,9 @@ L.Control.Layers = L.Control.extend({
 			if (L.Browser.touch) {
 				L.DomEvent
 				    .on(link, 'click', L.DomEvent.stop)
-				    .on(link, 'click', this._expand, this);
+				    .on(link, 'click', this.expand, this);
 			} else {
-				L.DomEvent.on(link, 'focus', this._expand, this);
+				L.DomEvent.on(link, 'focus', this.expand, this);
 			}
 
 			// work around for Firefox Android issue https://github.com/Leaflet/Leaflet/issues/2033
@@ -92,10 +178,10 @@ L.Control.Layers = L.Control.extend({
 				setTimeout(L.bind(this._onInputClick, this), 0);
 			}, this);
 
-			this._map.on('click', this._collapse, this);
+			this._map.on('click', this.collapse, this);
 			// TODO keyboard accessibility
 		} else {
-			this._expand();
+			this.expand();
 		}
 
 		this._baseLayersList = L.DomUtil.create('div', className + '-base', form);
@@ -105,16 +191,23 @@ L.Control.Layers = L.Control.extend({
 		container.appendChild(form);
 	},
 
+	_getLayer: function (id) {
+		for (var i = 0; i < this._layers.length; i++) {
+
+			if (this._layers[i] && L.stamp(this._layers[i].layer) === id) {
+				return this._layers[i];
+			}
+		}
+	},
+
 	_addLayer: function (layer, name, overlay) {
 		layer.on('add remove', this._onLayerChange, this);
 
-		var id = L.stamp(layer);
-
-		this._layers[id] = {
+		this._layers.push({
 			layer: layer,
 			name: name,
 			overlay: overlay
-		};
+		});
 
 		if (this.options.autoZIndex && layer.setZIndex) {
 			this._lastZIndex++;
@@ -130,7 +223,7 @@ L.Control.Layers = L.Control.extend({
 
 		var baseLayersPresent, overlaysPresent, i, obj, baseLayersCount = 0;
 
-		for (i in this._layers) {
+		for (i = 0; i < this._layers.length; i++) {
 			obj = this._layers[i];
 			this._addItem(obj);
 			overlaysPresent = overlaysPresent || obj.overlay;
@@ -154,14 +247,23 @@ L.Control.Layers = L.Control.extend({
 			this._update();
 		}
 
-		var overlay = this._layers[L.stamp(e.target)].overlay;
+		var obj = this._getLayer(L.stamp(e.target));
 
-		var type = overlay ?
+		// @namespace Map
+		// @section Layer events
+		// @event baselayerchange: LayersControlEvent
+		// Fired when the base layer is changed through the [layer control](#control-layers).
+		// @event overlayadd: LayersControlEvent
+		// Fired when an overlay is selected through the [layer control](#control-layers).
+		// @event overlayremove: LayersControlEvent
+		// Fired when an overlay is deselected through the [layer control](#control-layers).
+		// @namespace Control.Layers
+		var type = obj.overlay ?
 			(e.type === 'add' ? 'overlayadd' : 'overlayremove') :
 			(e.type === 'add' ? 'baselayerchange' : null);
 
 		if (type) {
-			this._map.fire(type, e.target);
+			this._map.fire(type, obj);
 		}
 	},
 
@@ -209,6 +311,7 @@ L.Control.Layers = L.Control.extend({
 		var container = obj.overlay ? this._overlaysList : this._baseLayersList;
 		container.appendChild(label);
 
+		this._checkDisabledLayers();
 		return label;
 	},
 
@@ -222,7 +325,7 @@ L.Control.Layers = L.Control.extend({
 
 		for (var i = inputs.length - 1; i >= 0; i--) {
 			input = inputs[i];
-			layer = this._layers[input.layerId].layer;
+			layer = this._getLayer(input.layerId).layer;
 			hasLayer = this._map.hasLayer(layer);
 
 			if (input.checked && !hasLayer) {
@@ -246,21 +349,36 @@ L.Control.Layers = L.Control.extend({
 		this._refocusOnMap();
 	},
 
-	_expand: function () {
-		L.DomUtil.addClass(this._container, 'leaflet-control-layers-expanded');
-		var acceptableHeight = this._map._size.y - (this._container.offsetTop * 4);
-		if (acceptableHeight < this._form.clientHeight)
-		{
-			L.DomUtil.addClass(this._form, 'leaflet-control-layers-scrollbar');
-			this._form.style.height = acceptableHeight + 'px';
+	_checkDisabledLayers: function () {
+		var inputs = this._form.getElementsByTagName('input'),
+		    input,
+		    layer,
+		    zoom = this._map.getZoom();
+
+		for (var i = inputs.length - 1; i >= 0; i--) {
+			input = inputs[i];
+			layer = this._getLayer(input.layerId).layer;
+			input.disabled = (layer.options.minZoom !== undefined && zoom < layer.options.minZoom) ||
+			                 (layer.options.maxZoom !== undefined && zoom > layer.options.maxZoom);
+
 		}
 	},
 
+	_expand: function () {
+		// Backward compatibility, remove me in 1.1.
+		return this.expand();
+	},
+
 	_collapse: function () {
-		L.DomUtil.removeClass(this._container, 'leaflet-control-layers-expanded');
+		// Backward compatibility, remove me in 1.1.
+		return this.collapse();
 	}
+
 });
 
+
+// @factory L.control.layers(baselayers?: Object, overlays?: Object, options?: Control.Layers options)
+// Creates an attribution control with the given layers. Base layers will be switched with radio buttons, while overlays will be switched with checkboxes. Note that all base layers should be passed in the base layers object, but only one should be added to the map during map instantiation.
 L.control.layers = function (baseLayers, overlays, options) {
 	return new L.Control.Layers(baseLayers, overlays, options);
 };

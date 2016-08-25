@@ -1,15 +1,22 @@
 /*
- * Spherical Mercator is the most popular map projection, used by EPSG:3857 CRS used by default.
+ * @namespace Projection
+ * @projection L.Projection.SphericalMercator
+ *
+ * Spherical Mercator projection — the most common projection for online maps,
+ * used by almost all free and commercial tile providers. Assumes that Earth is
+ * a sphere. Used by the `EPSG:3857` CRS.
  */
 
 L.Projection.SphericalMercator = {
 
 	R: 6378137,
+	MAX_LATITUDE: 85.0511287798,
 
 	project: function (latlng) {
 		var d = Math.PI / 180,
-		    max = 1 - 1E-15,
-		    sin = Math.max(Math.min(Math.sin(latlng.lat * d), max), -max);
+		    max = this.MAX_LATITUDE,
+		    lat = Math.max(Math.min(max, latlng.lat), -max),
+		    sin = Math.sin(lat * d);
 
 		return new L.Point(
 				this.R * latlng.lng * d,

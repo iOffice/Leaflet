@@ -1,13 +1,31 @@
 /*
- * L.Control.Zoom is used for the default zoom buttons on the map.
+ * @class Control.Zoom
+ * @aka L.Control.Zoom
+ * @inherits Control
+ *
+ * A basic zoom control with two buttons (zoom in and zoom out). It is put on the map by default unless you set its [`zoomControl` option](#map-zoomcontrol) to `false`. Extends `Control`.
  */
 
 L.Control.Zoom = L.Control.extend({
+	// @section
+	// @aka Control.Zoom options
 	options: {
 		position: 'topleft',
+
+		// @option zoomInText: String = '+'
+		// The text set on the 'zoom in' button.
 		zoomInText: '+',
+
+		// @option zoomInTitle: String = 'Zoom in'
+		// The title set on the 'zoom in' button.
 		zoomInTitle: 'Zoom in',
+
+		// @option zoomOutText: String = '-'
+		// The text set on the 'zoom out' button.
 		zoomOutText: '-',
+
+		// @option zoomOutTitle: String = 'Zoom out'
+		// The title set on the 'zoom out' button.
 		zoomOutTitle: 'Zoom out'
 	},
 
@@ -44,14 +62,14 @@ L.Control.Zoom = L.Control.extend({
 	},
 
 	_zoomIn: function (e) {
-		if (!this._disabled) {
-			this._map.zoomIn(e.shiftKey ? 3 : 1);
+		if (!this._disabled && this._map._zoom < this._map.getMaxZoom()) {
+			this._map.zoomIn(this._map.options.zoomDelta * (e.shiftKey ? 3 : 1));
 		}
 	},
 
 	_zoomOut: function (e) {
-		if (!this._disabled) {
-			this._map.zoomOut(e.shiftKey ? 3 : 1);
+		if (!this._disabled && this._map._zoom > this._map.getMinZoom()) {
+			this._map.zoomOut(this._map.options.zoomDelta * (e.shiftKey ? 3 : 1));
 		}
 	},
 
@@ -72,7 +90,7 @@ L.Control.Zoom = L.Control.extend({
 
 	_updateDisabled: function () {
 		var map = this._map,
-			className = 'leaflet-disabled';
+		    className = 'leaflet-disabled';
 
 		L.DomUtil.removeClass(this._zoomInButton, className);
 		L.DomUtil.removeClass(this._zoomOutButton, className);
@@ -86,6 +104,10 @@ L.Control.Zoom = L.Control.extend({
 	}
 });
 
+// @namespace Map
+// @section Control options
+// @option zoomControl: Boolean = true
+// Whether a [zoom control](#control-zoom) is added to the map by default.
 L.Map.mergeOptions({
 	zoomControl: true
 });
@@ -97,6 +119,9 @@ L.Map.addInitHook(function () {
 	}
 });
 
+// @namespace Control.Zoom
+// @factory L.control.zoom(options: Control.Zoom options)
+// Creates a zoom control
 L.control.zoom = function (options) {
 	return new L.Control.Zoom(options);
 };

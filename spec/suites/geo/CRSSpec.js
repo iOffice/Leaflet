@@ -157,3 +157,55 @@ describe("CRS.Simple", function () {
 		});
 	});
 });
+
+describe("CRS", function () {
+	var crs = L.CRS;
+
+	describe("#zoom && #scale", function () {
+		it("convert zoom to scale and viceversa and return the same values", function () {
+			var zoom = 2.5;
+			var scale = crs.scale(zoom);
+			expect(crs.zoom(scale)).to.eql(zoom);
+		});
+	});
+});
+
+describe("CRS.ZoomNotPowerOfTwo", function () {
+	var crs = L.extend({}, L.CRS, {
+		scale: function (zoom) {
+			return 256 * Math.pow(1.5, zoom);
+		},
+		zoom: function (scale) {
+			return Math.log(scale / 256) / Math.log(1.5);
+		}
+	});
+
+	describe("#scale", function () {
+		it("of zoom levels are related by a power of 1.5", function () {
+			var zoom = 5;
+			var scale = crs.scale(zoom);
+			expect(crs.scale(zoom + 1)).to.eql(1.5 * scale);
+			expect(crs.zoom(1.5 * scale)).to.eql(zoom + 1);
+		});
+	});
+
+	describe("#zoom && #scale", function () {
+		it("convert zoom to scale and viceversa and return the same values", function () {
+			var zoom = 2;
+			var scale = crs.scale(zoom);
+			expect(crs.zoom(scale)).to.eql(zoom);
+		});
+	});
+});
+
+describe("CRS.Earth", function () {
+	describe("#distance", function () {
+		// Test values from http://rosettacode.org/wiki/Haversine_formula,
+		// we assume using mean earth radius (https://en.wikipedia.org/wiki/Earth_radius#Mean_radius)
+		// is correct, since that's what International Union of Geodesy and Geophysics recommends,
+		// and that sounds serious.
+		var p1 = L.latLng(36.12, -86.67);
+		var p2 = L.latLng(33.94, -118.40);
+		expect(L.CRS.Earth.distance(p1, p2)).to.be.within(2886444.43, 2886444.45);
+	});
+});
